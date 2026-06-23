@@ -2,7 +2,7 @@ function buildSetImages(album, setIndex, isFirst) {
   const set = album.images.sets[setIndex];
   const dir = set.dir || (setIndex + 1);
   const setFolder = `set-${dir}`;
-  const base = `/assets/album-live/${album.slug}/${setFolder}`;
+  const base = `${VFE_MEDIA_BASE}/assets/album-live/${album.slug}/${setFolder}`;
   const setPrefix = `${album.slug}_set${dir}`;
   const imgs = [];
 
@@ -99,7 +99,7 @@ function buildRandomMix(albums, count = 100) {
     const set = album.images.sets[setIndex];
     const dir = set.dir || (setIndex + 1);
     const setFolder = `set-${dir}`;
-    const base = `/assets/album-live/${album.slug}/${setFolder}`;
+    const base = `${VFE_MEDIA_BASE}/assets/album-live/${album.slug}/${setFolder}`;
     const setPrefix = `${album.slug}_set${dir}`;
     const stem = `${setPrefix}_${String(imgIndex).padStart(2, '0')}`;
     const lcp = i === 0;

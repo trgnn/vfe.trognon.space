@@ -1,6 +1,12 @@
 # OS
 .DS_Store
 
+# Node dependencies (tooling only)
+node_modules/
+
+# Secrets — local environment (Vercel Blob token, etc.)
+.env
+
 # Resources / backups, out of scope (also contains nested git repos)
 /_ressources/
 
@@ -13,6 +19,10 @@ album-staging/*
 # kept locally but never pushed to the remote).
 album-archive/*
 !album-archive/.gitkeep
+
+# Live album media: now served from Vercel Blob, not the repo. The local copy under
+# site/assets/album-live/ is a gitignored mirror/backup; the script regenerates it.
+site/assets/album-live/
 
 # Editor / agent tooling: local, machine-specific config, not portable.
 .vscode/

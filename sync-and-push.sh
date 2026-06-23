@@ -6,6 +6,9 @@ SITE="$SCRIPT_DIR/site"
 STAGING="$SCRIPT_DIR/album-staging"
 LIVE="$SITE/assets/album-live"
 DATA="$SITE/js/data.js"
+# Media base URL (Vercel Blob, or empty for same-origin /assets), read from the front
+# config so generated album pages preload from the same place gallery.js loads images.
+MEDIA_BASE=$(grep -oE "^const VFE_MEDIA_BASE[[:space:]]*=[[:space:]]*'[^']*'" "$SITE/js/config.js" 2>/dev/null | sed "s/.*'\([^']*\)'.*/\1/")
 
 echo ""
 echo "=== View From Elsewhere — Sync & Push ==="
@@ -41,9 +44,10 @@ create_album_page() {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preload" as="image" href="/assets/album-live/$slug/set-1/thumbs/${slug}_set1_01.webp">
+    <link rel="preload" as="image" href="${MEDIA_BASE}/assets/album-live/$slug/set-1/thumbs/${slug}_set1_01.webp">
     <link rel="stylesheet" href="/styles/styles-galerie.css">
     <link rel="stylesheet" href="/styles/styles.css">
+    <script src="/js/config.js" defer></script>
     <script src="/js/data.js" defer></script>
     <script src="/js/header.js" defer></script>
     <script src="/js/modal-filter.js" defer></script>
@@ -773,6 +777,11 @@ PYEOF
 
   create_album_page "$SLUG" "$DISPLAY_NAME"
 
+  # Mirror the freshly generated media to Vercel Blob (the front serves from there).
+  # The local copy under site/assets/album-live/ stays as a gitignored mirror/backup.
+  echo "  Uploading media to Vercel Blob..."
+  node --env-file-if-exists="$SCRIPT_DIR/.env" "$SCRIPT_DIR/tools/blob-sync.mjs" "$SLUG"
+
   rm -rf "$STAGING/$STAGE_NAME"
   echo "  album-staging/$STAGE_NAME/ removed."
 
@@ -784,6 +793,14 @@ PYEOF
   fi
   echo ""
 }
+
+# Album media uploads to Vercel Blob — make sure the token is available before
+# generating anything (avoids aborting mid-publish on a missing credential).
+if ! node --env-file-if-exists="$SCRIPT_DIR/.env" -e 'process.exit(process.env.BLOB_READ_WRITE_TOKEN ? 0 : 1)' 2>/dev/null; then
+  echo "Error: BLOB_READ_WRITE_TOKEN not found. Set it in .env at the project root."
+  echo ""
+  exit 1
+fi
 
 for STAGE in "${SLUGS[@]}"; do
   publish_slug "$STAGE"
