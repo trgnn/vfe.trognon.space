@@ -1,0 +1,632 @@
+@import url('https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+
+:root {
+    --animation-speed: 0.4s;
+}
+
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    font-weight: 400;
+    font-family: jost, sans-serif;
+}
+
+.none {
+    display: none !important;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 40px;
+    background-color: white;
+    font-size: 16px;
+}
+
+#nav {
+    margin-bottom: 45px;
+}
+
+#core-gallery {
+    padding: 0 32px;
+}
+
+/* ─── Loading ─────────────────────────────────────────────────────────────── */
+
+.loading {
+    margin: auto;
+}
+
+#loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#loading img {
+    margin: 6vh 0;
+    animation-duration: 2s;
+    animation-timing-function: ease-in-out;
+    animation-name: loading;
+    animation-iteration-count: infinite;
+}
+
+@keyframes loading {
+    0%   { opacity: 0.8; filter: grayscale(0); }
+    40%  { opacity: 0.4; filter: grayscale(1); }
+    100% { opacity: 0.8; filter: grayscale(0); }
+}
+
+/* ─── Header ──────────────────────────────────────────────────────────────── */
+
+#header {
+    padding: 32px 32px 0px 32px;
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+#header .logo .desktop, #header .logo a {
+    display: block;
+    width: 306.26px;
+    height: 39px;
+}
+
+#header .logo .mobile {
+    display: none;
+}
+
+#header .nav {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Burger is fixed so it stays visible while scrolling; z-index 9 keeps it above the modal overlay (z-index 8) */
+#header .burger {
+    z-index: 9;
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: center;
+    gap: 10px;
+
+    position: fixed;
+    top: 32px;
+    right: 32px;
+    padding: 8px 14px;
+    background: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(2px);
+
+    transition: 0.4s;
+}
+
+#header .burger-text {
+    visibility: visible;
+    font-weight: 700;
+    font-size: 16px;
+    line-height: 23px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    transition: 0.4s;
+}
+
+.burgerMenu {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.burgerMenu span {
+    height: 3px;
+    width: 23px;
+    background-color: black;
+    transition: 0.4s;
+}
+
+.burger {
+    transition: 1s;
+    cursor: pointer;
+}
+
+.burger:hover .burgerMenu span {
+    visibility: visible;
+    background-image: url("/assets/banner_header.webp");
+    background-size: cover;
+    background-position: center;
+    transition: 0.4s;
+}
+
+#header .banner {
+    height: 32px;
+    background-image: url("/assets/banner_header.webp");
+    background-size: cover;
+}
+
+/* Burger → X animation when modal opens */
+
+#header .burger.active {
+    background: rgba(255, 255, 255, 0);
+    backdrop-filter: blur(0px);
+    padding: 24px;
+    transition: 0.4s;
+}
+
+.burger.active .burgerMenu span:nth-child(2) {
+    translate: 40px 0;
+    opacity: 0;
+    transition: 0.4s;
+}
+
+.burger.active .burgerMenu span:nth-child(1) {
+    translate: 0 9px;
+    rotate: 45deg;
+}
+
+.burger.active .burgerMenu span:nth-child(3) {
+    translate: 0 -9px;
+    rotate: -45deg;
+}
+
+.burger.active .burger-text {
+    display: none;
+    transition: 0.4s;
+}
+
+.modal-filter .alphabet {
+    font-weight: 900;
+    font-size: 16px;
+    text-transform: uppercase;
+}
+
+@media (max-width: 570px) {
+    #header {
+        padding: 20px 16px 0px 16px;
+    }
+    footer {
+        padding: 0px 16px !important;
+    }
+    #core-gallery {
+        padding: 0 16px;
+    }
+    #header .burger {
+        top: 16px;
+        right: 16px;
+    }
+    #header .logo .desktop {
+        display: none;
+    }
+    #header .logo .mobile, #header .logo a {
+        display: block;
+        width: 96.2px;
+        height: 39px;
+    }
+}
+
+/* ─── Modal ───────────────────────────────────────────────────────────────── */
+
+/* visibility (not display:none) so the fade transition can fire */
+.modal-filter {
+    position: fixed;
+    top: 0;
+    width: 100vw;
+    visibility: hidden;
+    transition: 0.4s;
+    z-index: 8;
+}
+
+.modal-filter.active {
+    visibility: visible;
+}
+
+body.active {
+    overflow-y: hidden;
+}
+
+/* backdrop animates from transparent to frosted-glass */
+.modal-filter .modal-container {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(255, 255, 255, 0);
+    backdrop-filter: blur(0px);
+    transition: var(--animation-speed);
+}
+
+.modal-filter.active .modal-container {
+    background-color: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(14px);
+}
+
+/* modal slides up from below on open */
+.modal-filter .modal {
+    width: 95%;
+    max-width: 980px;
+    display: flex;
+    flex-direction: column;
+    gap: 0px;
+    opacity: 0;
+    translate: 0 580px;
+    transition: var(--animation-speed);
+}
+
+.modal-filter.active .modal {
+    max-height: 840px;
+    padding: 20px;
+    gap: 16px;
+    translate: 0 0;
+    opacity: 1;
+}
+
+.modal-filter .banner {
+    height: 26px;
+    background-image: url("/assets/banner_modal.webp");
+    background-size: cover;
+}
+
+.modal-filter .scrollable {
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.modal-filter a {
+    text-decoration: none;
+    color: black;
+}
+
+.modal-filter a:hover .name {
+    text-decoration: underline;
+}
+
+.modal-filter h2 {
+    margin-bottom: 10px;
+    font-weight: 300;
+    font-size: 24px;
+    text-transform: uppercase;
+}
+
+.modal-filter h3 {
+    margin-bottom: 6px;
+    font-weight: 700;
+    font-size: 20px;
+    text-transform: uppercase;
+}
+
+.modal-filter .filters {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.modal-filter .filters .name {
+    margin-right: 6px;
+}
+
+.modal-filter .filters .meta {
+    color: #B7B7B7;
+}
+
+/* ─── Footer ──────────────────────────────────────────────────────────────── */
+
+footer {
+    margin-top: 16px;
+    padding: 0px 32px;
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+}
+
+/* horizontal scroll when many albums overflow */
+#nav-latest {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 48px;
+    padding: 14px 16px 12px 16px;
+    border: solid 3px black;
+    overflow-x: auto;
+    font-size: 14px;
+    text-transform: uppercase;
+    color: black;
+}
+
+#nav-latest span {
+    font-weight: 700;
+}
+
+#nav-latest a {
+    font-weight: 400;
+    color: black;
+    text-decoration: none;
+}
+
+#nav-latest a:hover, #footer a:hover {
+    text-decoration: underline;
+}
+
+#nav-latest a, #nav-latest span, #footer a {
+    white-space: nowrap;
+}
+
+#footer {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    height: 56px;
+    padding: 0 12px 0 16px;
+    gap: 48px;
+    background-color: black;
+    color: white;
+}
+
+#footer a {
+    color: white;
+    text-decoration: none;
+    font-weight: 400;
+    font-size: 14px;
+    line-height: auto;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+#footer .SM {
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+}
+
+/* Default: white square, black icon. Hover: black square (merges with footer bg), white icon */
+#footer .SM a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    background: white;
+    flex-shrink: 0;
+    transition: background 0.2s ease;
+}
+
+#footer .SM a:hover {
+    background: black;
+    text-decoration: none;
+}
+
+#footer .SM img {
+    width: 20px;
+    transition: filter 0.2s ease;
+}
+
+/* SVG fill is black — invert to white on hover (black bg) */
+#footer .SM a:hover img {
+    filter: invert(1);
+}
+
+#footer div {
+    font-weight: 300;
+    font-size: 14px;
+    text-transform: uppercase;
+}
+
+#footer .bold {
+    font-weight: 700;
+}
+
+@media (max-width: 720px) {
+    footer {
+        flex-direction: column-reverse;
+    }
+    #footer {
+        justify-content: space-around;
+        gap: 16px;
+    }
+    #footer .SM {
+        gap: 16px;
+    }
+}
+
+@media (max-width: 420px) {
+    #footer .nop {
+        display: none;
+    }
+}
+
+/* ─── Album info ──────────────────────────────────────────────────────────── */
+
+.album-infos {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 40px;
+    margin: 0 8px 8px 8px;
+}
+
+h1 {
+    font-weight: 700;
+    font-size: 24px;
+    text-transform: uppercase;
+}
+
+h1 .album {
+    font-weight: 400;
+    font-size: 16px;
+}
+
+.album-infos .meta {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 40px;
+}
+
+.album-infos .meta span {
+    font-weight: 700;
+}
+
+.album-infos .meta .name {
+    margin-right: 10px;
+    font-size: 16px;
+    font-weight: 400;
+}
+
+.ref {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.ref a {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: white;
+    text-decoration: none;
+    background-color: black;
+    padding: 12px 16px;
+    box-shadow: 2px 2px 0px #FFFFFF, 4px 4px 0px #000000;
+    transition: 0.4s;
+}
+
+.ref a:hover {
+    box-shadow: 2px 4px 0px #000000;
+}
+
+.album-infos .ref a {
+    padding: 8px 12px;
+    text-transform: uppercase;
+    font-size: 14px;
+}
+
+/* ─── About ───────────────────────────────────────────────────────────────── */
+
+body[data-page="about"] footer {
+    display: none;
+}
+
+#core-about {
+    margin: 6vh 40px;
+}
+
+#core-about .about-container {
+    max-width: 750px;
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+
+#core-about h1 {
+    font-weight: 300;
+    font-size: 24px;
+    text-transform: uppercase;
+}
+
+#core-about h1 .bold {
+    font-weight: 700;
+    font-size: 24px;
+}
+
+#core-about h2 {
+    font-weight: 700;
+    font-size: 15px;
+    text-transform: uppercase;
+    margin: 24px 0 4px 0;
+}
+
+#core-about .shortcuts {
+    border-collapse: collapse;
+    margin: 8px 0;
+}
+
+#core-about .shortcuts td {
+    padding: 4px 16px 4px 0;
+    vertical-align: middle;
+}
+
+#core-about .shortcuts td:first-child {
+    white-space: nowrap;
+}
+
+kbd {
+    display: inline-block;
+    padding: 2px 6px;
+    font-family: inherit;
+    font-size: 13px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    background: #f5f5f5;
+}
+
+#core-about .text a {
+    color: black;
+    text-decoration: underline;
+}
+
+#core-about .text a:hover {
+    text-decoration: none;
+}
+
+@media (max-width: 720px) {
+    #core-about {
+        margin: 3vh 20px;
+    }
+}
+
+/* ─── Scrollbars ──────────────────────────────────────────────────────────── */
+
+/* Hide up/down arrow buttons on webkit scrollbars */
+html::-webkit-scrollbar-button:single-button:vertical:decrement,
+html::-webkit-scrollbar-button:single-button:vertical:increment,
+.scrollable::-webkit-scrollbar-button:single-button:vertical:decrement,
+.scrollable::-webkit-scrollbar-button:single-button:vertical:increment,
+#nav-latest::-webkit-scrollbar-button:single-button:vertical:decrement,
+#nav-latest::-webkit-scrollbar-button:single-button:vertical:increment {
+    display: none;
+}
+
+html::-webkit-scrollbar {
+    width: 12px;
+    border-left: solid 2px black;
+}
+
+html::-webkit-scrollbar-track {
+    position: relative;
+}
+
+html::-webkit-scrollbar-thumb {
+    background-color: black;
+}
+
+.scrollable::-webkit-scrollbar {
+    width: 12px;
+}
+
+.scrollable::-webkit-scrollbar-track {
+    position: relative;
+    border-right: solid 2px black;
+}
+
+.scrollable::-webkit-scrollbar-thumb {
+    background-color: black;
+}
+
+#nav-latest::-webkit-scrollbar {
+    height: 4px;
+}
+
+#nav-latest::-webkit-scrollbar-thumb {
+    background-color: black;
+}

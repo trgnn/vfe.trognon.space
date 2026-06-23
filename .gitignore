@@ -1,0 +1,19 @@
+# OS
+.DS_Store
+
+# Resources / backups, out of scope (also contains nested git repos)
+/_ressources/
+
+# Ephemeral staging: keep the folder (its role in the architecture), not its contents
+# (the script purges published albums — avoid versioning transient states).
+album-staging/*
+!album-staging/.gitkeep
+
+# Source album archive: keep the folder, not its contents (heavy media,
+# kept locally but never pushed to the remote).
+album-archive/*
+!album-archive/.gitkeep
+
+# Editor / agent tooling: local, machine-specific config, not portable.
+.vscode/
+.claude/
