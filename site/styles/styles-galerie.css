@@ -59,6 +59,11 @@
   outline-offset: -6px;
 }
 
+/* ─── Featured ("spotlight") images ──────────────────────────────────────────────
+   Tagged in curation.js (VFE.featured); gallery.js marks each one with the
+   .is-featured class and a data-featured attr (carried onto the fullscreen <img>
+   too). No visual styling yet — the effect is being reworked; hook in here. */
+
 /* ─── Fullscreen ─────────────────────────────────────────────────────────────── */
 
 .m-p-g__fullscreen {

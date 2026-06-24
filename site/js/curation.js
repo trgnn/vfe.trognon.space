@@ -6,6 +6,15 @@
 //                       mixes followed by pinned items. No `pinned` flag lives on
 //                       individual albums/series/collections; it's all driven here.
 
+// Featured images: per-album, the 1-based indices that get the "spotlight"
+// treatment in the gallery. Album slugs only — the tag follows the image to
+// every view it appears in (album, mix, collection) and is carried onto the
+// fullscreen <img> too. See imgTag() in gallery.js. The visual effect is being
+// reworked; for now the tag only marks images (.is-featured / data-featured).
+VFE.featured = {
+  // haloInfinite: [7, 12],   // 1-based indices into the album's media
+};
+
 VFE.collections = [
   // {
   //   slug: 'open-worlds',

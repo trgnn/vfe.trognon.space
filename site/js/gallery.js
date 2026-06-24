@@ -12,7 +12,14 @@ function imgTag(type, slug, i, albumSlug, name, lcp) {
   // pixels load, so the appearance animation never reflows. Empty if unknown.
   const r = (typeof VFE_DIMS !== 'undefined' && VFE_DIMS[type] && VFE_DIMS[type][slug] && VFE_DIMS[type][slug][i - 1]);
   const ratio = r ? `data-ratio="${r}"` : '';
-  return `<img src="${base}/thumbs/${stem}.avif" data-full="${base}/full/${stem}.avif" data-download="${base}/downloads/${stem}.jpg" data-album-slug="${albumSlug}" ${ratio} alt="${name} — photo ${i}" class="m-p-g__thumbs-img" ${loading} ${priority}>`;
+  // Featured ("spotlight") tag — hand-curated in curation.js by (album slug, index).
+  // Only album-sourced images have that stable identity; mixes/collections call
+  // this with type 'album' too, so the tag follows the image into those views.
+  const featured = type === 'album' && typeof VFE !== 'undefined' && VFE.featured
+    && VFE.featured[slug] && VFE.featured[slug].includes(i);
+  const feat = featured ? 'data-featured="1"' : '';
+  const cls = `m-p-g__thumbs-img${featured ? ' is-featured' : ''}`;
+  return `<img src="${base}/thumbs/${stem}.avif" data-full="${base}/full/${stem}.avif" data-download="${base}/downloads/${stem}.jpg" data-album-slug="${albumSlug}" ${ratio} ${feat} alt="${name} — photo ${i}" class="${cls}" ${loading} ${priority}>`;
 }
 
 // All images of a single album or series (1 → count).
@@ -191,6 +198,7 @@ function initLightbox(gallery, showSourceButton) {
     img.dataset.albumSlug = t.dataset.albumSlug;
     img.alt = t.alt;
     img.className = 'm-p-g__fullscreen-img';
+    if (t.dataset.featured) img.classList.add('is-featured');  // carry the spotlight tag
     fullBox.appendChild(img);
     return img;
   });
