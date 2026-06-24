@@ -27,6 +27,7 @@ const SITE_DIR = join(import.meta.dirname, '..', 'site');
 const LIVE_DIR = join(SITE_DIR, 'assets', 'album-live');
 
 const CONTENT_TYPES = {
+  '.avif': 'image/avif',
   '.webp': 'image/webp',
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',

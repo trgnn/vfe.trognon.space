@@ -12,7 +12,7 @@ function buildSetImages(album, setIndex, isFirst) {
     const lcp = isFirst && i === 1;
     const loading = lcp ? '' : 'loading="lazy"';
     const priority = lcp ? 'fetchpriority="high"' : '';
-    imgs.push(`<img src="${base}/thumbs/${stem}.webp" data-full="${base}/full/${stem}.webp" data-download="${base}/downloads/${stem}.jpg" data-album-slug="${album.slug}" alt="${album.name} — photo ${i}" class="m-p-g__thumbs-img" ${loading} ${priority}>`);
+    imgs.push(`<img src="${base}/thumbs/${stem}.avif" data-full="${base}/full/${stem}.avif" data-download="${base}/downloads/${stem}.jpg" data-album-slug="${album.slug}" alt="${album.name} — photo ${i}" class="m-p-g__thumbs-img" ${loading} ${priority}>`);
   }
   return imgs.join('\n');
 }
@@ -105,7 +105,7 @@ function buildRandomMix(albums, count = 100) {
     const lcp = i === 0;
     const loading = lcp ? '' : 'loading="lazy"';
     const priority = lcp ? 'fetchpriority="high"' : '';
-    return `<img src="${base}/thumbs/${stem}.webp" data-full="${base}/full/${stem}.webp" data-download="${base}/downloads/${stem}.jpg" data-album-slug="${album.slug}" alt="${album.name} — photo ${imgIndex}" class="m-p-g__thumbs-img" ${loading} ${priority}>`;
+    return `<img src="${base}/thumbs/${stem}.avif" data-full="${base}/full/${stem}.avif" data-download="${base}/downloads/${stem}.jpg" data-album-slug="${album.slug}" alt="${album.name} — photo ${imgIndex}" class="m-p-g__thumbs-img" ${loading} ${priority}>`;
   }).join('\n');
 }
 

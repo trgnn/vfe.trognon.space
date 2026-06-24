@@ -19,7 +19,7 @@ count_images() {
   # Live: since the WebP rework, the originals (download) live in downloads/.
   local dir="$1"
   [ -d "$dir/downloads" ] && dir="$dir/downloads"
-  find "$dir" -maxdepth 1 -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) | wc -l | tr -d ' '
+  find "$dir" -maxdepth 1 -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.tif" -o -iname "*.tiff" \) | wc -l | tr -d ' '
 }
 
 in_data_js() {
@@ -44,7 +44,7 @@ create_album_page() {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preload" as="image" href="${MEDIA_BASE}/assets/album-live/$slug/set-1/thumbs/${slug}_set1_01.webp">
+    <link rel="preload" as="image" href="${MEDIA_BASE}/assets/album-live/$slug/set-1/thumbs/${slug}_set1_01.avif">
     <link rel="stylesheet" href="/styles/styles-galerie.css">
     <link rel="stylesheet" href="/styles/styles.css">
     <script src="/js/config.js" defer></script>
@@ -330,22 +330,22 @@ for slug in sorted(os.listdir(live_dir)):
             integrity.append(f"  ⚠ '{slug}' set-{n}: inconsistent naming in downloads/ ({'; '.join(detail)})")
 
         # Pairing original ↔ full-screen ↔ thumbnail: each downloads/ JPG must
-        # have its .webp in full/ and in thumbs/, and vice versa.
-        expected_webp = {os.path.splitext(f)[0] + '.webp' for f in actual}
+        # have its .avif in full/ and in thumbs/, and vice versa.
+        expected_avif = {os.path.splitext(f)[0] + '.avif' for f in actual}
         for kind in ('full', 'thumbs'):
             kind_path = os.path.join(set_path, kind)
             kind_files = set()
             if os.path.isdir(kind_path):
                 kind_files = {f for f in os.listdir(kind_path)
-                              if f.lower().endswith('.webp')
+                              if f.lower().endswith('.avif')
                               and os.path.isfile(os.path.join(kind_path, f))}
             label = 'full-screen' if kind == 'full' else 'thumbnail(s)'
-            missing_webp = sorted(expected_webp - kind_files)
-            orphan_webp = sorted(kind_files - expected_webp)
-            if missing_webp:
-                integrity.append(f"  ⚠ '{slug}' set-{n}: {kind}/ — {label} missing for {', '.join(missing_webp)}")
-            if orphan_webp:
-                integrity.append(f"  ⚠ '{slug}' set-{n}: {kind}/ — {label} orphaned with no matching original: {', '.join(orphan_webp)}")
+            missing_avif = sorted(expected_avif - kind_files)
+            orphan_avif = sorted(kind_files - expected_avif)
+            if missing_avif:
+                integrity.append(f"  ⚠ '{slug}' set-{n}: {kind}/ — {label} missing for {', '.join(missing_avif)}")
+            if orphan_avif:
+                integrity.append(f"  ⚠ '{slug}' set-{n}: {kind}/ — {label} orphaned with no matching original: {', '.join(orphan_avif)}")
 
         n += 1
     if sets:
@@ -716,14 +716,14 @@ publish_slug() {
     mkdir -p "$THUMBS_DIR" "$FULL_DIR" "$DOWNLOADS_DIR"
 
     echo ""
-    echo "  Set $((i + 1))/$STAGED_COUNT → set-$SET_NUM: generating from masters (PNG → encoded JPEG, JPG → copied) + full-screen WebP + thumbnail..."
+    echo "  Set $((i + 1))/$STAGED_COUNT → set-$SET_NUM: generating from masters (lossless PNG/TIFF → encoded JPEG, JPG → copied) + full-screen AVIF + thumbnail..."
     local j=1
     while IFS= read -r img; do
       local stem="${PREFIX}_$(printf '%02d' $j)"
 
       # Download (downloads/) depending on the master's nature:
       #   - master already JPEG → faithful copy (never re-encode JPEG→JPEG, which would degrade).
-      #   - lossless master (PNG…) → JPEG q95/4:4:4 encoded by Python below.
+      #   - lossless master (PNG, TIFF…) → JPEG q95/4:4:4 encoded by Python below.
       local ext_lc jpg_arg
       ext_lc=$(printf '%s' "${img##*.}" | tr '[:upper:]' '[:lower:]')
       if [ "$ext_lc" = "jpg" ] || [ "$ext_lc" = "jpeg" ]; then
@@ -733,27 +733,29 @@ publish_slug() {
         jpg_arg="$DOWNLOADS_DIR/$stem.jpg"
       fi
 
-      # full/: full-resolution WebP q88 (display). thumbs/: downscaled WebP q75 (min side 500px).
-      python3 - "$img" "$jpg_arg" "$FULL_DIR/$stem.webp" "$THUMBS_DIR/$stem.webp" << 'PYEOF'
+      # full/: full-resolution AVIF q55 (display). thumbs/: AVIF q50, 760px on the short side.
+      # NOTE: keep these encode settings in sync with tools/migrate-to-avif.sh (archive re-gen).
+      python3 - "$img" "$jpg_arg" "$FULL_DIR/$stem.avif" "$THUMBS_DIR/$stem.avif" << 'PYEOF'
 import sys
 from PIL import Image
 src, jpg_out, full_out, thumb_out = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 img = Image.open(src)
-rgb = img.convert("RGB")  # flatten any alpha channel (required for JPEG, consistent with the WebP)
+rgb = img.convert("RGB")  # flatten any alpha channel (required for JPEG, consistent with the AVIF)
 # Download: JPEG q95/4:4:4 from a lossless master ('-' = master already JPEG, already copied).
 if jpg_out != "-":
     rgb.save(jpg_out, "JPEG", quality=95, subsampling=0, optimize=True)
-# Full-screen: full resolution, WebP q88 (method=6 = best compression).
-rgb.save(full_out, "WEBP", quality=88, method=6)
-# Thumbnail: downscaled to 500px on the short side, WebP q75.
+# Full-screen: full resolution, AVIF q55 (speed=6 = balanced encode time/size).
+rgb.save(full_out, "AVIF", quality=55, speed=6)
+# Thumbnail: 760px on the short side (retina-ready for the ~420px mosaic), AVIF q50. Never upscale.
 w, h = rgb.size
-scale = 500 / min(w, h)
-rgb.resize((int(w * scale), int(h * scale)), Image.LANCZOS).save(thumb_out, "WEBP", quality=75)
+scale = min(760 / min(w, h), 1.0)
+thumb = rgb.resize((round(w * scale), round(h * scale)), Image.LANCZOS) if scale < 1 else rgb
+thumb.save(thumb_out, "AVIF", quality=50, speed=6)
 PYEOF
       j=$((j + 1))
-    done < <(find "$SRC_DIR" -maxdepth 1 -type f \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" \) | sort)
+    done < <(find "$SRC_DIR" -maxdepth 1 -type f \( -iname "*.png" -o -iname "*.tif" -o -iname "*.tiff" -o -iname "*.jpg" -o -iname "*.jpeg" \) | sort)
     local FINAL_COUNT=$((j - 1))
-    echo "  $FINAL_COUNT image(s): original (downloads/) + full-screen WebP (full/) + thumbnail (thumbs/)."
+    echo "  $FINAL_COUNT image(s): original (downloads/) + full-screen AVIF (full/) + thumbnail (thumbs/)."
 
     if [ "$MODE" = "new" ]; then
       echo "  Updating data.js..."
