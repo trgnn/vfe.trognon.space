@@ -1,56 +1,128 @@
-function buildNav(albums) {
-  const currentAlbums = albums.filter(a => !a.era || a.era === 'current');
-  const archiveAlbums = albums.filter(a => a.era === 'archive');
+function buildNav(VFE) {
+  const albums      = VFE.albums || [];
+  const series      = VFE.series || [];
+  const collections = VFE.collections || [];
+  const starred     = VFE.starred || { mixes: [], pinned: [] };
 
-  function totalImages(list) {
-    return list.reduce((sum, a) => sum + a.images.sets.reduce((s, n) => s + n.count, 0), 0);
+  // ── helpers ────────────────────────────────────────────────────────────────
+  function albumsOfSource(source) {
+    if (Array.isArray(source)) {
+      return source.map(s => albums.find(a => a.slug === s)).filter(Boolean);
+    }
+    if (source === 'archive') return albums.filter(a => a.era === 'archive');
+    if (source === 'current') return albums.filter(a => !a.era || a.era === 'current');
+    return albums;
   }
 
+  const sumCount = list => list.reduce((s, a) => s + (a.count || 0), 0);
+
+  function mixCount(mix) {
+    const total = sumCount(albumsOfSource(mix.source));
+    return mix.count != null ? Math.min(mix.count, total) : total;
+  }
+
+  function collectionAlbums(c) {
+    return (c.albums || []).map(s => albums.find(a => a.slug === s)).filter(Boolean);
+  }
+
+  function link(href, name, count) {
+    const meta = count != null ? `<span class="meta">(${count})</span>` : '';
+    return `<a href="${href}"><span class="name">${name}</span>${meta}</a>`;
+  }
+
+  // ── Starred (replaces the old "Spotlight" section) ──────────────────────────
+  // Hide a mix when its source is empty, or when it's redundant with a mix
+  // already shown above it (same album set + same ordering/cap) — e.g. "All
+  // Archive" collapses into "All" when every album is archive.
+  const mixSig = m =>
+    albumsOfSource(m.source).map(a => a.slug).sort().join(',')
+    + '|' + (m.random ? 'r' : 'o') + '|' + (m.count != null ? m.count : '');
+
+  const seenSig = new Set();
+  const visibleMixes = starred.mixes.filter(m => {
+    if (albumsOfSource(m.source).length === 0) return false;
+    const sig = mixSig(m);
+    if (seenSig.has(sig)) return false;
+    seenSig.add(sig);
+    return true;
+  });
+
+  const mixLinks = visibleMixes
+    .map(m => link(`/index.html?mix=${m.id}`, m.name, mixCount(m)))
+    .join('');
+
+  const pinnedLinks = (starred.pinned || []).map(p => {
+    if (p.type === 'album') {
+      const a = albums.find(x => x.slug === p.slug);
+      return a ? link(`/index.html?album=${a.slug}`, a.name, a.count) : '';
+    }
+    if (p.type === 'series') {
+      const s = series.find(x => x.slug === p.slug);
+      return s ? link(`/index.html?series=${s.slug}`, s.name, s.count) : '';
+    }
+    if (p.type === 'collection') {
+      const c = collections.find(x => x.slug === p.slug);
+      return c ? link(`/index.html?collection=${c.slug}`, c.name, sumCount(collectionAlbums(c))) : '';
+    }
+    return '';
+  }).join('');
+
+  const starredSection = `
+    <div>
+      <h3>Starred</h3>
+      <div class="filters">
+        ${mixLinks}
+        ${pinnedLinks}
+      </div>
+    </div>`;
+
+  // ── Explore › Albums (alphabetical) ─────────────────────────────────────────
   function buildAlphaList(list) {
     const byLetter = {};
     list.forEach(album => {
       if (!album.name) return;
       const letter = album.name[0].toUpperCase();
-      if (!byLetter[letter]) byLetter[letter] = [];
-      byLetter[letter].push(album);
+      (byLetter[letter] = byLetter[letter] || []).push(album);
     });
-
     return Object.entries(byLetter)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([letter, letterAlbums]) => {
-        const links = letterAlbums.map(album => `
-          <a href="/albums/${album.slug}.html" id="${album.slug}">
-            <span class="name">${album.name}</span><span class="meta">(${album.images.sets.reduce((s, n) => s + n.count, 0)})</span>
+        const links = letterAlbums
+          .map(a => `
+          <a href="/index.html?album=${a.slug}" id="${a.slug}">
+            <span class="name">${a.name}</span><span class="meta">(${a.count})</span>
           </a>`).join('');
         return `<span class="alphabet">${letter}</span>${links}`;
       }).join('');
   }
 
-  const currentSection = currentAlbums.length ? `
+  const albumsSection = albums.length ? `
     <div>
-      <h3>Current<em> · Fresh upload (≥ 2026)</em></h3>
+      <h3>Albums</h3>
       <div class="filters">
-        <a href="/index.html?era=current">
-          <span class="name">📍 All Current</span><span class="meta">(${totalImages(currentAlbums)})</span>
-        </a>
-        ${buildAlphaList(currentAlbums)}
+        ${buildAlphaList(albums)}
       </div>
     </div>` : '';
 
-  const archiveSection = archiveAlbums.length ? `
+  const seriesSection = series.length ? `
     <div>
-      <h3>Archive<em> · Explore the original albums (≤ 2023)</em></h3>
+      <h3>Series</h3>
       <div class="filters">
-        <a href="/index.html?era=archive">
-          <span class="name">📍 All Archive</span><span class="meta">(${totalImages(archiveAlbums)})</span>
-        </a>
-        ${buildAlphaList(archiveAlbums)}
+        ${series.map(s => link(`/index.html?series=${s.slug}`, s.name, s.count)).join('')}
+      </div>
+    </div>` : '';
+
+  const collectionsSection = collections.length ? `
+    <div>
+      <h3>Collections</h3>
+      <div class="filters">
+        ${collections.map(c => link(`/index.html?collection=${c.slug}`, c.name, sumCount(collectionAlbums(c)))).join('')}
       </div>
     </div>` : '';
 
   const latestLinks = albums
     .slice(0, 10)
-    .map(a => `<a href="/albums/${a.slug}.html">${a.name}</a>`).join('');
+    .map(a => `<a href="/index.html?album=${a.slug}">${a.name}</a>`).join('');
 
   return `
     <header>
@@ -62,16 +134,10 @@ function buildNav(albums) {
               <div class="banner"></div>
             </div>
             <div class="scrollable">
-              <div>
-                <h3>Spotlight</h3>
-                <div class="filters">
-                  <a href="/index.html">
-                    <span class="name">🎲 Random Mix</span><span class="meta">(100)</span>
-                  </a>
-                </div>
-              </div>
-              ${currentSection}
-              ${archiveSection}
+              ${starredSection}
+              ${albumsSection}
+              ${seriesSection}
+              ${collectionsSection}
             </div>
           </div>
         </div>
@@ -114,4 +180,4 @@ function buildNav(albums) {
     </footer>`;
 }
 
-document.querySelector('#nav').innerHTML = buildNav(VFE.albums);
+document.querySelector('#nav').innerHTML = buildNav(VFE);

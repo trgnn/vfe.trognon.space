@@ -7,7 +7,6 @@
   --btn-bg: rgba(255, 255, 255, .07);
   --btn-bg-hover: rgba(255, 255, 255, .15);
   --btn-sep: rgba(255, 255, 255, .14);
-  --set-color: rgba(0, 0, 0, .42);
 }
 
 /* ─── Gallery ────────────────────────────────────────────────────────────────── */
@@ -29,19 +28,24 @@
   opacity: 0;
   filter: brightness(100%);
   -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
-  will-change: opacity, transform;
-  transition: all .5s cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-.m-p-g__thumbs-img.active {
-  z-index: 50;
+  will-change: opacity;
+  /* Only the fade-in (opacity) and hover (filter) animate — never the geometry.
+     Sizes are set from the precomputed grid and must snap instantly, otherwise
+     the layout appears to "grow"/jump into place over the transition. */
+  transition: opacity .5s cubic-bezier(0.23, 1, 0.32, 1), filter .2s ease;
 }
 
 .m-p-g__thumbs-img.layout-completed {
-  opacity: 1;
   border: solid 1px var(--gallery-img-border);
   outline: solid 7px var(--gallery-img-border);
   outline-offset: -6px;
+}
+
+/* Sizing (layout-completed) is applied up-front from the precomputed ratios;
+   the fade-in is gated on the actual pixels arriving, so each thumbnail appears
+   in its already-fixed box without any reflow. */
+.m-p-g__thumbs-img.loaded {
+  opacity: 1;
 }
 
 .m-p-g__thumbs-img.hide {
@@ -119,7 +123,7 @@
   background: linear-gradient(to top, transparent 0%, var(--controls-gradient) 100%);
   opacity: 0;
   visibility: hidden;
-  transition: all .5s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: opacity .5s cubic-bezier(0.23, 1, 0.32, 1), visibility .5s;
 }
 
 .m-p-g__controls.active {
@@ -209,7 +213,7 @@
   width: 50px;
   height: 50px;
   background: var(--btn-bg);
-  transition: all .25s ease-out;
+  transition: background .25s ease-out;
 }
 
 .m-p-g__btn:hover {
@@ -226,76 +230,6 @@
   letter-spacing: .08em;
   text-transform: uppercase;
   color: #fff;
-}
-
-/* ─── Set nav ────────────────────────────────────────────────────────────────── */
-
-.m-p-g--multi {
-  display: grid;
-  grid-template-columns: 0 1fr;
-}
-
-.m-p-g--multi .set-block {
-  grid-column: 2;
-  min-width: 0;
-}
-
-.set-block {
-  scroll-margin-top: 20px;
-}
-
-.set-block + .set-block {
-  margin-top: 32px;
-}
-
-.set-block + .set-block::before {
-  content: '';
-  display: block;
-  width: calc(100% - 14px);
-  margin: 0 auto 32px;
-  border-top: solid 1px var(--set-color);
-}
-
-.set-nav {
-  grid-column: 1;
-  position: sticky;
-  top: 20px;
-  align-self: start;
-  overflow: visible;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  z-index: 5;
-}
-
-.set-nav__item {
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-  margin-left: -16px;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  text-decoration: none;
-  color: var(--set-color);
-  opacity: 0.35;
-  cursor: pointer;
-  transition: opacity .2s ease-out;
-}
-
-.set-nav__item.active {
-  opacity: 1;
-}
-
-.set-nav__item:hover {
-  opacity: 0.65;
-}
-
-@media (max-width: 570px) {
-  .set-nav__item {
-    margin-left: -13px;
-  }
 }
 
 .m-p-g__thumbs {

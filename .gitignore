@@ -4,6 +4,9 @@
 # Node dependencies (tooling only)
 node_modules/
 
+# Python bytecode cache (tooling)
+__pycache__/
+
 # Secrets — local environment (Vercel Blob token, etc.)
 .env
 
@@ -20,9 +23,10 @@ album-staging/*
 album-archive/*
 !album-archive/.gitkeep
 
-# Live album media: now served from Vercel Blob, not the repo. The local copy under
-# site/assets/album-live/ is a gitignored mirror/backup; the script regenerates it.
-site/assets/album-live/
+# Live album/series media: now served from Vercel Blob, not the repo. The local copy
+# under site/assets/{album,series}/ is a gitignored mirror/backup; the script regenerates it.
+site/assets/album/
+site/assets/series/
 
 # Editor / agent tooling: local, machine-specific config, not portable.
 .vscode/
