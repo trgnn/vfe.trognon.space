@@ -463,6 +463,18 @@ h1 .album {
     font-size: 16px;
 }
 
+/* Album title = bold game name + lighter " · subtitle" (set differentiator).
+   The global `* { font-weight: 400 }` reset breaks inheritance into spans, so the
+   game name is re-bolded explicitly (the sep/subtitle stay at the 400 default). */
+h1 .game-name {
+    font-weight: 700;
+}
+
+h1 .sep,
+h1 .subtitle {
+    font-weight: 400;
+}
+
 .album-infos .meta {
     display: flex;
     flex-direction: row;

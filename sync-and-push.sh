@@ -56,7 +56,8 @@ resolve_orphan() {
     read -p "    Description: " desc
     python3 "$DATA_EDIT" add-series "$DATA" "$slug" "$name" "$desc" "$cnt"
   else
-    local dev pub era
+    local subtitle dev pub era
+    read -p "    Subtitle [Enter to skip]: " subtitle
     read -p "    Developer(s): " dev
     read -p "    Publisher(s) [Enter if same as developer]: " pub
     [ -z "$pub" ] && pub="$dev"
@@ -64,7 +65,7 @@ resolve_orphan() {
       read -p "    Current or Archive? (c/a): " era
       case "$era" in c) era=current; break ;; a) era=archive; break ;; *) echo "      → 'c' or 'a'" ;; esac
     done
-    python3 "$DATA_EDIT" add-album "$DATA" "$slug" "$name" "$era" "$dev" "$pub" "$cnt"
+    python3 "$DATA_EDIT" add-album "$DATA" "$slug" "$name" "$subtitle" "$era" "$dev" "$pub" "$cnt"
   fi
   echo "  ✓ '$name' registered in data.js ($cnt image(s))."
   echo ""
@@ -246,7 +247,8 @@ publish_unit() {
       local DESC
       read -p "  Description: " DESC
     else
-      local DEVELOPER PUBLISHER ERA
+      local SUBTITLE DEVELOPER PUBLISHER ERA
+      read -p "  Subtitle [Enter to skip]: " SUBTITLE
       read -p "  Developer(s): " DEVELOPER
       read -p "  Publisher(s) [Enter if same as developer]: " PUBLISHER
       [ -z "$PUBLISHER" ] && PUBLISHER="$DEVELOPER"
@@ -269,7 +271,7 @@ publish_unit() {
   elif [ "$TYPE" = "series" ]; then
     python3 "$DATA_EDIT" add-series "$DATA" "$SLUG" "$DISPLAY_NAME" "$DESC" "$FINAL"
   else
-    python3 "$DATA_EDIT" add-album "$DATA" "$SLUG" "$DISPLAY_NAME" "$ERA" "$DEVELOPER" "$PUBLISHER" "$FINAL"
+    python3 "$DATA_EDIT" add-album "$DATA" "$SLUG" "$DISPLAY_NAME" "$SUBTITLE" "$ERA" "$DEVELOPER" "$PUBLISHER" "$FINAL"
   fi
 
   echo "  Uploading media to Vercel Blob..."

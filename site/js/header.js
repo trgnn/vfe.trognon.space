@@ -16,6 +16,10 @@ function buildNav(VFE) {
 
   const sumCount = list => list.reduce((s, a) => s + (a.count || 0), 0);
 
+  // Album display title: "Game Name · Subtitle" (subtitle optional). Disambiguates
+  // albums that share a game name (former sets, now distinct albums).
+  const albumTitle = a => a.subtitle ? `${a.name} · ${a.subtitle}` : a.name;
+
   function mixCount(mix) {
     const total = sumCount(albumsOfSource(mix.source));
     return mix.count != null ? Math.min(mix.count, total) : total;
@@ -54,7 +58,7 @@ function buildNav(VFE) {
   const pinnedLinks = (starred.pinned || []).map(p => {
     if (p.type === 'album') {
       const a = albums.find(x => x.slug === p.slug);
-      return a ? link(`/index.html?album=${a.slug}`, a.name, a.count) : '';
+      return a ? link(`/index.html?album=${a.slug}`, albumTitle(a), a.count) : '';
     }
     if (p.type === 'series') {
       const s = series.find(x => x.slug === p.slug);
@@ -90,7 +94,7 @@ function buildNav(VFE) {
         const links = letterAlbums
           .map(a => `
           <a href="/index.html?album=${a.slug}" id="${a.slug}">
-            <span class="name">${a.name}</span><span class="meta">(${a.count})</span>
+            <span class="name">${albumTitle(a)}</span><span class="meta">(${a.count})</span>
           </a>`).join('');
         return `<span class="alphabet">${letter}</span>${links}`;
       }).join('');
@@ -122,7 +126,7 @@ function buildNav(VFE) {
 
   const latestLinks = albums
     .slice(0, 10)
-    .map(a => `<a href="/index.html?album=${a.slug}">${a.name}</a>`).join('');
+    .map(a => `<a href="/index.html?album=${a.slug}">${albumTitle(a)}</a>`).join('');
 
   return `
     <header>

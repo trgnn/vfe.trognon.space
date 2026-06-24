@@ -2,14 +2,14 @@
 # All read/write operations on site/js/data.js, centralized.
 #
 # data.js holds two machine-managed arrays — albums and series — of flat entries:
-#   albums:  { slug, name, era, developer, publisher, count }
+#   albums:  { slug, name, subtitle, era, developer, publisher, count }
 #   series:  { slug, name, description, count }
 # (collections + starred live in curation.js and are never touched here.)
 #
 # Subcommands:
 #   type   <data> <slug>                                  -> 'album' | 'series' | 'none'
 #   count  <data> <slug>                                  -> current count, or -1
-#   add-album  <data> <slug> <name> <era> <dev> <pub> <n> insert new album at top
+#   add-album  <data> <slug> <name> <sub> <era> <dev> <pub> <n>  insert new album at top
 #   add-series <data> <slug> <name> <desc> <n>           insert new series at top
 #   set-count  <data> <slug> <n>                          set count of existing item + promote
 #   reconcile  report|apply <assets> <data> <orphans> <removed>
@@ -57,6 +57,7 @@ def render_album(d):
     return ("    {\n"
             f"      slug: {d['slug']},\n"
             f"      name: {d['name']},\n"
+            f"      subtitle: {d.get('subtitle', 'null')},\n"
             f"      era: {d['era']},\n"
             f"      developer: {d.get('developer', 'null')},\n"
             f"      publisher: {d.get('publisher', 'null')},\n"
@@ -113,12 +114,13 @@ def cmd_count(data, slug):
     print(-1)
 
 
-def cmd_add_album(data, slug, name, era, dev, pub, n):
+def cmd_add_album(data, slug, name, subtitle, era, dev, pub, n):
     content = read(data)
     entries = get_entries(content, 'albums')
     entries = [e for e in entries if e['slug'] != tok(slug)]
-    entries.insert(0, {'slug': tok(slug), 'name': tok(name), 'era': tok(era),
-                       'developer': tok(dev), 'publisher': tok(pub), 'count': str(int(n))})
+    entries.insert(0, {'slug': tok(slug), 'name': tok(name), 'subtitle': tok(subtitle),
+                       'era': tok(era), 'developer': tok(dev), 'publisher': tok(pub),
+                       'count': str(int(n))})
     write(data, replace_array(content, 'albums', entries, render_album))
 
 
@@ -293,7 +295,7 @@ def main():
     elif cmd == 'count':
         cmd_count(a[1], a[2])
     elif cmd == 'add-album':
-        cmd_add_album(a[1], a[2], a[3], a[4], a[5], a[6], a[7])
+        cmd_add_album(a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8])
     elif cmd == 'add-series':
         cmd_add_series(a[1], a[2], a[3], a[4], a[5])
     elif cmd == 'set-count':

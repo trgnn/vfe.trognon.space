@@ -83,6 +83,19 @@ function buildCollectionImages(collection) {
 function buildItemInfo(item, type) {
   const label = type === 'series' ? 'Series' : type === 'collection' ? 'Collection' : 'Album';
 
+  // Albums carry two title parts: the game name and an optional subtitle, kept in
+  // separate spans so the header layout can evolve. For now: name · subtitle.
+  // Series/collections have a single name.
+  let title;
+  if (type === 'album') {
+    title = `<span class="game-name">${item.name}</span>`;
+    if (item.subtitle) {
+      title += ` <span class="sep">·</span> <span class="subtitle">${item.subtitle}</span>`;
+    }
+  } else {
+    title = item.name;
+  }
+
   let meta = '';
   if (type === 'album') {
     const pub = item.publisher || item.developer;
@@ -98,7 +111,7 @@ function buildItemInfo(item, type) {
 
   return `
     <div class="album-infos">
-      <h1><span class="album">${label} /</span> ${item.name}</h1>
+      <h1><span class="album">${label} /</span> ${title}</h1>
       <div class="meta">
         ${meta}
       </div>
