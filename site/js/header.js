@@ -139,6 +139,11 @@ function buildNav(VFE) {
     .slice(0, 10)
     .map(a => `<a href="/index.html?album=${a.slug}">${albumTitle(a)}</a>`).join('');
 
+  // Milestone version, from config.js (loaded on both index and about). Guarded
+  // so the footer still renders if config.js is ever absent.
+  const version = typeof VFE_VERSION !== 'undefined'
+    ? `<span class="version">${VFE_VERSION}</span>` : '';
+
   return `
     <header>
       <section class="modal-filter">
@@ -190,6 +195,7 @@ function buildNav(VFE) {
           <a href="https://go.trognon.space/socials/instagram" target="_blank" aria-label="Instagram">
             <img src="/assets/instagram.svg" alt="" width="20" height="20" />
           </a>
+          ${version}
         </div>
       </div>
     </footer>`;

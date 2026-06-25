@@ -417,6 +417,14 @@ footer {
     text-transform: uppercase;
 }
 
+#footer .version {
+    font-size: 12px;
+    font-weight: 300;
+    letter-spacing: 0.04em;
+    color: #777;
+    align-self: center;
+}
+
 #footer .bold {
     font-weight: 700;
 }
