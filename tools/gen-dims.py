@@ -25,6 +25,17 @@ def img_order(name):
     return int(m.group(1)) if m else 0
 
 
+def ratio_of(path):
+    # Header-only read (no pixel decode); honor EXIF orientation so a rotated
+    # image gets the ratio it is actually displayed at.
+    with Image.open(path) as im:
+        w, h = im.size
+        orientation = im.getexif().get(0x0112, 1)  # 0x0112 = Orientation
+    if orientation in (5, 6, 7, 8):  # 90°/270° → axes swapped
+        w, h = h, w
+    return round(w / h, 4) if h else 1
+
+
 def collect(kind):
     root = os.path.join(ASSETS, kind)
     out = {}
@@ -40,9 +51,14 @@ def collect(kind):
         files.sort(key=img_order)
         ratios = []
         for f in files:
-            with Image.open(os.path.join(downloads, f)) as im:
-                w, h = im.size
-            ratios.append(round(w / h, 4) if h else 1)
+            try:
+                ratios.append(ratio_of(os.path.join(downloads, f)))
+            except Exception as e:
+                # One unreadable file must not abort the whole run; keep the index
+                # aligned with a square fallback and warn.
+                print(f"  ⚠ gen-dims: cannot read {kind}/{slug}/{f} ({e}); using 1.0",
+                      file=sys.stderr)
+                ratios.append(1.0)
         if ratios:
             out[slug] = ratios
     return out

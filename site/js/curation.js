@@ -5,20 +5,23 @@
 //   - VFE.starred     : the "Starred" section of the Explore overlay — a menu of
 //                       mixes followed by pinned items. No `pinned` flag lives on
 //                       individual albums/series/collections; it's all driven here.
-
-// Featured images: per-album, the 1-based indices that get the "spotlight"
-// treatment in the gallery. Album slugs only — the tag follows the image to
-// every view it appears in (album, mix, collection) and is carried onto the
-// fullscreen <img> too. See imgTag() in gallery.js. The visual effect is being
-// reworked; for now the tag only marks images (.is-featured / data-featured).
-VFE.featured = {
-  // haloInfinite: [7, 12],   // 1-based indices into the album's media
-};
+//
+// Everything here references slugs (stable); index-coupled data lives in data.js.
+// Featured images moved there too (album.featured), so the script can keep their
+// indices aligned when media is renumbered.
 
 VFE.collections = [
+  {
+     slug: 'squareWindow',
+     name: 'Window',
+     era: 'archive',
+     description: '…',
+     albums: ['cloudClimber', 'assassinsCreedOrigins_square', 'itTakesTwo', 'celeste', 'haloInfinite', 'carto', 'gris_square']
+  },
   // {
   //   slug: 'open-worlds',
   //   name: 'Open Worlds',
+  //   era: 'current',                              // 'current' | 'archive' (defaults to current)
   //   description: '…',
   //   albums: ['haloInfinite', 'cyberpunk2077']   // album slugs only
   // },

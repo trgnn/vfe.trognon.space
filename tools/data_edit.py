@@ -2,20 +2,26 @@
 # All read/write operations on site/js/data.js, centralized.
 #
 # data.js holds two machine-managed arrays — albums and series — of flat entries:
-#   albums:  { slug, name, subtitle, era, developer, publisher, count }
-#   series:  { slug, name, description, count }
+#   albums:  { slug, name, subtitle, era, developer, publisher, count, featured: [..] }
+#   series:  { slug, name, era, description, count }
 # (collections + starred live in curation.js and are never touched here.)
 #
 # Subcommands:
 #   type   <data> <slug>                                  -> 'album' | 'series' | 'none'
 #   count  <data> <slug>                                  -> current count, or -1
-#   add-album  <data> <slug> <name> <sub> <era> <dev> <pub> <n>  insert new album at top
-#   add-series <data> <slug> <name> <desc> <n>           insert new series at top
+#   add-album  <data> <slug> <name> <sub> <era> <dev> <pub> <n> [<featured_csv>]  insert album
+#   set-featured  <data> <slug> <csv>                     replace album's featured index list
+#   add-featured  <data> <slug> <csv>                     merge indices into featured (append)
+#   remap-featured <data> <slug> <mapfile>                apply renumber old→new map to featured
+#   add-series <data> <slug> <name> <era> <desc> <n>     insert new series at top
 #   set-count  <data> <slug> <n>                          set count of existing item + promote
+#   rename-slug <data> <old> <new>                        rename an item's slug, keeping its data
+#   remove-item <data> <kind> <slug>                      remove a single album/series entry
+#   reconcile apply now defers removals (records candidates) — caller confirms each
 #   reconcile  report|apply <assets> <data> <orphans> <removed>
 #                                                          align data.js with assets/{album,series}/
 
-import sys, os, re
+import sys, os, re, tempfile
 
 
 # ── data.js parse / render ──────────────────────────────────────────────────────
@@ -26,8 +32,22 @@ def read(p):
 
 
 def write(p, c):
-    with open(p, 'w') as f:
-        f.write(c)
+    # Atomic: write to a temp file in the same dir, fsync, then os.replace so an
+    # interrupt can never leave data.js half-written (it is the committed source).
+    d = os.path.dirname(os.path.abspath(p))
+    fd, tmp = tempfile.mkstemp(dir=d, prefix='.data_edit-', suffix='.tmp')
+    try:
+        with os.fdopen(fd, 'w') as f:
+            f.write(c)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, p)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
 
 
 def array_match(content, name):
@@ -39,7 +59,9 @@ def parse_entries(body):
     out = []
     for block in re.findall(r'\{[^{}]*\}', body):
         d = {}
-        for k, v in re.findall(r"(\w+):\s*('(?:[^'\\]|\\.)*'|null|-?\d+)", block):
+        # Values are a quoted string, an array [..], null, or an integer. The array
+        # alternative lets per-album index fields (e.g. featured) round-trip intact.
+        for k, v in re.findall(r"(\w+):\s*('(?:[^'\\]|\\.)*'|\[[^\]]*\]|null|-?\d+)", block):
             d[k] = v
         if 'slug' in d:
             out.append(d)
@@ -53,6 +75,21 @@ def tok(s):
     return "'" + s.replace('\\', '\\\\').replace("'", "\\'") + "'"
 
 
+def parse_indices(csv):
+    """'3, 7' / '3 7' → [3, 7] (sorted, unique)."""
+    return sorted({int(t) for t in re.split(r'[,\s]+', (csv or '').strip()) if t.isdigit()})
+
+
+def read_indices(s):
+    """Stored array string '[7, 12]' → [7, 12]."""
+    return [int(x) for x in re.findall(r'\d+', s or '')]
+
+
+def fmt_indices(lst):
+    """[7, 12] → '[7, 12]' (sorted, unique); empty → '[]'."""
+    return '[' + ', '.join(str(i) for i in sorted(set(lst))) + ']'
+
+
 def render_album(d):
     return ("    {\n"
             f"      slug: {d['slug']},\n"
@@ -61,14 +98,17 @@ def render_album(d):
             f"      era: {d['era']},\n"
             f"      developer: {d.get('developer', 'null')},\n"
             f"      publisher: {d.get('publisher', 'null')},\n"
-            f"      count: {d['count']}\n"
+            f"      count: {d['count']},\n"
+            f"      featured: {d.get('featured', '[]')}\n"
             "    }")
 
 
 def render_series(d):
+    era = d.get('era', "'current'")
     return ("    {\n"
             f"      slug: {d['slug']},\n"
             f"      name: {d['name']},\n"
+            f"      era: {era},\n"
             f"      description: {d.get('description', 'null')},\n"
             f"      count: {d['count']}\n"
             "    }")
@@ -114,21 +154,68 @@ def cmd_count(data, slug):
     print(-1)
 
 
-def cmd_add_album(data, slug, name, subtitle, era, dev, pub, n):
+def cmd_add_album(data, slug, name, subtitle, era, dev, pub, n, featured=''):
     content = read(data)
     entries = get_entries(content, 'albums')
     entries = [e for e in entries if e['slug'] != tok(slug)]
     entries.insert(0, {'slug': tok(slug), 'name': tok(name), 'subtitle': tok(subtitle),
                        'era': tok(era), 'developer': tok(dev), 'publisher': tok(pub),
-                       'count': str(int(n))})
+                       'count': str(int(n)), 'featured': fmt_indices(parse_indices(featured))})
     write(data, replace_array(content, 'albums', entries, render_album))
 
 
-def cmd_add_series(data, slug, name, desc, n):
+def _featured_album(content, slug):
+    entries = get_entries(content, 'albums')
+    e = next((x for x in entries if x['slug'] == tok(slug)), None)
+    return entries, e
+
+
+def cmd_set_featured(data, slug, csv):
+    content = read(data)
+    entries, e = _featured_album(content, slug)
+    if e is None:
+        sys.exit(f"Error: album '{slug}' not found in data.js")
+    e['featured'] = fmt_indices(parse_indices(csv))
+    write(data, replace_array(content, 'albums', entries, render_album))
+
+
+def cmd_add_featured(data, slug, csv):
+    content = read(data)
+    entries, e = _featured_album(content, slug)
+    if e is None:
+        sys.exit(f"Error: album '{slug}' not found in data.js")
+    e['featured'] = fmt_indices(read_indices(e.get('featured')) + parse_indices(csv))
+    write(data, replace_array(content, 'albums', entries, render_album))
+
+
+def cmd_remap_featured(data, slug, mapfile):
+    # Apply a renumber's old→new index map to this album's featured list; indices
+    # with no new home (a gap that vanished) are dropped. Silent no-op if the album
+    # has no featured.
+    remap = {}
+    with open(mapfile) as f:
+        for line in f:
+            parts = line.split()
+            if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                remap[int(parts[0])] = int(parts[1])
+    content = read(data)
+    entries, e = _featured_album(content, slug)
+    if e is None:
+        return
+    cur = read_indices(e.get('featured'))
+    new = [remap[i] for i in cur if i in remap]
+    if fmt_indices(new) == (e.get('featured') or '[]'):
+        return  # unchanged
+    e['featured'] = fmt_indices(new)
+    write(data, replace_array(content, 'albums', entries, render_album))
+    print(f"  data.js: featured for '{slug}' remapped → {fmt_indices(new)}")
+
+
+def cmd_add_series(data, slug, name, era, desc, n):
     content = read(data)
     entries = get_entries(content, 'series')
     entries = [e for e in entries if e['slug'] != tok(slug)]
-    entries.insert(0, {'slug': tok(slug), 'name': tok(name),
+    entries.insert(0, {'slug': tok(slug), 'name': tok(name), 'era': tok(era),
                        'description': tok(desc), 'count': str(int(n))})
     write(data, replace_array(content, 'series', entries, render_series))
 
@@ -145,6 +232,33 @@ def cmd_set_count(data, slug, n):
             write(data, replace_array(content, name, entries, render))
             return
     sys.exit(f"Error: slug '{slug}' not found in data.js")
+
+
+def cmd_rename_slug(data, old, new):
+    content = read(data)
+    # The new slug must be free across both arrays.
+    for name in ('albums', 'series'):
+        if any(e['slug'] == tok(new) for e in get_entries(content, name)):
+            sys.exit(f"Error: slug '{new}' already exists in data.js")
+    for name, render in (('albums', render_album), ('series', render_series)):
+        entries = get_entries(content, name)
+        idx = next((i for i, e in enumerate(entries) if e['slug'] == tok(old)), None)
+        if idx is not None:
+            entries[idx]['slug'] = tok(new)  # everything else (and position) is kept
+            write(data, replace_array(content, name, entries, render))
+            return
+    sys.exit(f"Error: slug '{old}' not found in data.js")
+
+
+def cmd_remove_item(data, kind, slug):
+    content = read(data)
+    name = 'albums' if kind == 'album' else 'series'
+    render = render_album if kind == 'album' else render_series
+    entries = get_entries(content, name)
+    kept = [e for e in entries if e['slug'] != tok(slug)]
+    if len(kept) == len(entries):
+        sys.exit(f"Error: {kind} '{slug}' not found in data.js")
+    write(data, replace_array(content, name, kept, render))
 
 
 # ── reconcile ───────────────────────────────────────────────────────────────────
@@ -249,39 +363,46 @@ def cmd_reconcile(mode, assets, data, orphans_path, removed_path):
             print()
         sys.exit(10)
 
-    print("Fixes to apply:")
-    for kind, slug, old, new in fixes:
-        if new is None:
-            print(f"  - Remove {kind} '{slug}' (missing from disk)")
-        else:
+    count_fixes = [f for f in fixes if f[3] is not None]
+    removals    = [f for f in fixes if f[3] is None]
+    if count_fixes:
+        print("Count updates (applied together):")
+        for kind, slug, old, new in count_fixes:
             print(f"  - Update count of {kind} '{slug}': {old} → {new}")
-    print()
+        print()
+    if removals:
+        print("Vanished from disk (each confirmed individually before removal):")
+        for kind, slug, old, _ in removals:
+            print(f"  - {kind} '{slug}' (was {old} image(s))")
+        print()
 
     if mode == 'report':
         sys.exit(0)
 
-    # apply
+    # apply: count updates only. Removals are NOT applied here — they are recorded
+    # as candidates (removed_path) so the caller can confirm each one (and its Blob
+    # deletion) individually. A vanished item is kept in data.js until confirmed.
     removed = []
     for kind, name, render in (('album', 'albums', render_album), ('series', 'series', render_series)):
         entries = get_entries(content, name)
-        new_entries = []
         for e in entries:
             slug = e['slug'].strip("'")
             fix = next((f for f in fixes if f[0] == kind and f[1] == slug), None)
-            if fix and fix[3] is None:
-                removed.append((kind, slug))
+            if not fix:
                 continue
-            if fix:
+            if fix[3] is None:
+                removed.append((kind, slug))   # candidate; entry kept for now
+            else:
                 e['count'] = str(fix[3])
-            new_entries.append(e)
-        content = replace_array(content, name, new_entries, render)
+        content = replace_array(content, name, entries, render)
     write(data, content)
 
     with open(removed_path, 'w') as f:
         for kind, slug in removed:
             f.write(f'{kind}:{slug}\n')
 
-    print(f"{len(fixes)} fix(es) applied. data.js updated.")
+    print(f"{len(count_fixes)} count update(s) applied; "
+          f"{len(removals)} vanished item(s) pending individual confirmation.")
     print()
 
 
@@ -295,11 +416,21 @@ def main():
     elif cmd == 'count':
         cmd_count(a[1], a[2])
     elif cmd == 'add-album':
-        cmd_add_album(a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8])
+        cmd_add_album(a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9] if len(a) > 9 else '')
+    elif cmd == 'set-featured':
+        cmd_set_featured(a[1], a[2], a[3])
+    elif cmd == 'add-featured':
+        cmd_add_featured(a[1], a[2], a[3])
+    elif cmd == 'remap-featured':
+        cmd_remap_featured(a[1], a[2], a[3])
     elif cmd == 'add-series':
-        cmd_add_series(a[1], a[2], a[3], a[4], a[5])
+        cmd_add_series(a[1], a[2], a[3], a[4], a[5], a[6])
     elif cmd == 'set-count':
         cmd_set_count(a[1], a[2], a[3])
+    elif cmd == 'rename-slug':
+        cmd_rename_slug(a[1], a[2], a[3])
+    elif cmd == 'remove-item':
+        cmd_remove_item(a[1], a[2], a[3])
     elif cmd == 'reconcile':
         cmd_reconcile(a[1], a[2], a[3], a[4], a[5])
     else:

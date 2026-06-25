@@ -12,11 +12,12 @@ function imgTag(type, slug, i, albumSlug, name, lcp) {
   // pixels load, so the appearance animation never reflows. Empty if unknown.
   const r = (typeof VFE_DIMS !== 'undefined' && VFE_DIMS[type] && VFE_DIMS[type][slug] && VFE_DIMS[type][slug][i - 1]);
   const ratio = r ? `data-ratio="${r}"` : '';
-  // Featured ("spotlight") tag — hand-curated in curation.js by (album slug, index).
-  // Only album-sourced images have that stable identity; mixes/collections call
-  // this with type 'album' too, so the tag follows the image into those views.
-  const featured = type === 'album' && typeof VFE !== 'undefined' && VFE.featured
-    && VFE.featured[slug] && VFE.featured[slug].includes(i);
+  // Featured ("spotlight") tag — per-album image indices stored in data.js
+  // (album.featured). Only album-sourced images have that stable identity;
+  // mixes/collections call this with type 'album' too, so the tag follows.
+  const album = (type === 'album' && typeof VFE !== 'undefined' && VFE.albums)
+    ? VFE.albums.find(a => a.slug === slug) : null;
+  const featured = !!(album && Array.isArray(album.featured) && album.featured.includes(i));
   const feat = featured ? 'data-featured="1"' : '';
   const cls = `m-p-g__thumbs-img${featured ? ' is-featured' : ''}`;
   return `<img src="${base}/thumbs/${stem}.avif" data-full="${base}/full/${stem}.avif" data-download="${base}/downloads/${stem}.jpg" data-album-slug="${albumSlug}" ${ratio} ${feat} alt="${name} — photo ${i}" class="${cls}" ${loading} ${priority}>`;

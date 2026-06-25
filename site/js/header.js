@@ -34,6 +34,17 @@ function buildNav(VFE) {
     return `<a href="${href}"><span class="name">${name}</span>${meta}</a>`;
   }
 
+  // Render a list either flat (single era) or split into Current / Archive groups
+  // when both eras are present — mirroring how the Starred mixes collapse to "All"
+  // under a single era. Missing era counts as current. `linkFn` builds one entry.
+  function renderByEra(list, linkFn) {
+    const current = list.filter(x => !x.era || x.era === 'current');
+    const archive = list.filter(x => x.era === 'archive');
+    if (!current.length || !archive.length) return list.map(linkFn).join('');
+    return `<span class="alphabet">Current</span>${current.map(linkFn).join('')}`
+         + `<span class="alphabet">Archive</span>${archive.map(linkFn).join('')}`;
+  }
+
   // ── Starred (replaces the old "Spotlight" section) ──────────────────────────
   // Hide a mix when its source is empty, or when it's redundant with a mix
   // already shown above it (same album set + same ordering/cap) — e.g. "All
@@ -112,7 +123,7 @@ function buildNav(VFE) {
     <div>
       <h3>Series</h3>
       <div class="filters">
-        ${series.map(s => link(`/index.html?series=${s.slug}`, s.name, s.count)).join('')}
+        ${renderByEra(series, s => link(`/index.html?series=${s.slug}`, s.name, s.count))}
       </div>
     </div>` : '';
 
@@ -120,7 +131,7 @@ function buildNav(VFE) {
     <div>
       <h3>Collections</h3>
       <div class="filters">
-        ${collections.map(c => link(`/index.html?collection=${c.slug}`, c.name, sumCount(collectionAlbums(c)))).join('')}
+        ${renderByEra(collections, c => link(`/index.html?collection=${c.slug}`, c.name, sumCount(collectionAlbums(c))))}
       </div>
     </div>` : '';
 
