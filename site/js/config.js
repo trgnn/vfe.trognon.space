@@ -1,12 +1,12 @@
 // Base URL for album media (thumbs / full / downloads).
 //
 // Empty string  → media served from the same origin (/assets/album/… , /assets/series/…).
-// Blob base URL → media served from Vercel Blob, e.g.:
-//     const VFE_MEDIA_BASE = 'https://xxxxxxxx.public.blob.vercel-storage.com';
+// cdn base URL  → media served from cdn.trognon.space (Cloudflare R2, folder vfe/),
+//     mirrored by tools/media-sync.sh.
 //
 // The path after the base is identical in both cases (assets/{album,series}/…),
 // so switching providers is a one-line change here.
-const VFE_MEDIA_BASE = 'https://9lp6yhxfhlqerqcw.public.blob.vercel-storage.com';
+const VFE_MEDIA_BASE = 'https://cdn.trognon.space/vfe';
 
 // Conceptual milestone version, mirrored from the current annotated Git tag.
 // Scheme: v{major}.{minor} — major = change of direction, minor = functional

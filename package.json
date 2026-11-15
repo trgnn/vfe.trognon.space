@@ -5,9 +5,6 @@
   "type": "module",
   "description": "View From Elsewhere — build & deploy tooling",
   "scripts": {
-    "blob:sync": "node --env-file-if-exists=.env tools/blob-sync.mjs"
-  },
-  "dependencies": {
-    "@vercel/blob": "^2.4.1"
+    "media:sync": "tools/media-sync.sh"
   }
 }

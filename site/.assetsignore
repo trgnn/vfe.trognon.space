@@ -1,0 +1,8 @@
+# Not part of the deployed site: media is served from cdn.trognon.space,
+# the rest is local tooling.
+assets/album/**
+assets/series/**
+.gitignore
+.vscode/**
+.DS_Store
+**/.DS_Store

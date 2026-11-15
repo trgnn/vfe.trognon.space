@@ -7,7 +7,7 @@ node_modules/
 # Python bytecode cache (tooling)
 __pycache__/
 
-# Secrets — local environment (Vercel Blob token, etc.)
+# Secrets — local environment
 .env
 
 # Resources / backups, out of scope (also contains nested git repos)
@@ -23,7 +23,7 @@ album-staging/*
 album-archive/*
 !album-archive/.gitkeep
 
-# Live album/series media: now served from Vercel Blob, not the repo. The local copy
+# Live album/series media: served from cdn.trognon.space (tools/media-sync.sh), not the repo. The local copy
 # under site/assets/{album,series}/ is a gitignored mirror/backup; the script regenerates it.
 site/assets/album/
 site/assets/series/

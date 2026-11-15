@@ -67,8 +67,8 @@ fi
 command -v trash >/dev/null 2>&1 || \
   echo "Note: 'trash' CLI not found — deletions fall back to Finder / ~/.Trash."
 
-# Everything up to the final "Mirror to Blob" step is LOCAL-only: sync, repairs and
-# the staging push only mutate assets/ + data.js + dims.js on disk. The Blob is
+# Everything up to the final "Mirror to cdn" step is LOCAL-only: sync, repairs and
+# the staging push only mutate assets/ + data.js + dims.js on disk. The online media is
 # touched at exactly one place — the mirror at the very end — which needs the token.
 
 # ── 1. Reconcile assets/ → data.js ──────────────────────────────────────────────
@@ -84,7 +84,7 @@ resolve_orphan() {
       f) break ;;
       d)
         rm -rf "$ASSETS/$kind/$slug"
-        echo "    assets/$kind/$slug/ removed (its Blob copy is dropped by the mirror)."
+        echo "    assets/$kind/$slug/ removed (its cdn copy is dropped by the mirror)."
         echo ""
         return ;;
       *) echo "      → answer 'f' (fill) or 'd' (delete)" ;;
@@ -148,7 +148,7 @@ sync_data_with_assets() {
   # Vanished items (in data.js, gone from disk) are reported by reconcile as
   # candidates and kept in data.js. Confirm each one individually before removing
   # it — so approving an unrelated count fix can never drop an album you only moved
-  # away temporarily. Its now-orphaned Blob media is cleared by the mirror at the
+  # away temporarily. Its now-orphaned cdn media is cleared by the mirror at the
   # end. Read into an array first so the per-item prompt reads the terminal.
   local RLINES=() rline rkind rslug rans
   if [ -s "$REMOVED" ]; then
@@ -182,7 +182,7 @@ sync_data_with_assets() {
 # A folder renamed on disk but whose files keep the old slug prefix is a rename
 # (the prefix is the old slug's fingerprint). Offer to rename the files to match,
 # then migrate the data.js slug — keeping all metadata — so the reconcile below
-# sees a clean state instead of an orphan. The Blob mirror at the end propagates
+# sees a clean state instead of an orphan. The cdn mirror at the end propagates
 # the old→new paths automatically. curation.js is never auto-edited; we only warn.
 RENAMES="$(mktemp)"; REPAIRS="$(mktemp)"
 trap 'rm -f "$RENAMES" "$REPAIRS"' EXIT
@@ -221,7 +221,7 @@ echo ""
 
 # ── 1e. Repair media (numbering gaps / missing or stale derivatives) ────────────
 # For each flagged item, offer to regenerate derivatives from downloads/ and/or
-# renumber to remove gaps (then update the count). The Blob mirror at the end
+# renumber to remove gaps (then update the count). The cdn mirror at the end
 # propagates the result. Read into an array first so the prompts read the terminal.
 echo "=== Repair media ==="
 echo ""
@@ -495,7 +495,7 @@ publish_unit() {
     echo "  ⚠ '$SLUG' already exists ($EXISTING_TYPE, $(count_images "$ASSETS/$EXISTING_TYPE/$SLUG") image(s) on disk)."
     echo "    What to do with these $IMG_COUNT staged image(s)?"
     echo "      a) append  — add them to '$SLUG' (existing images kept)"
-    echo "      r) replace — wipe '$SLUG' (old images → Trash + Blob cleared), publish these instead (metadata kept)"
+    echo "      r) replace — wipe '$SLUG' (old images → Trash + cdn cleared), publish these instead (metadata kept)"
     echo "      n) no      — pick a different slug"
     read -p "    Choose (a/r/n): " MERGE
     case "$MERGE" in
@@ -563,7 +563,7 @@ publish_unit() {
 
   # Replace swap: old images → Trash (recoverable), new set moved into place. The
   # data.js entry + metadata are kept; set-count updates below. The mirror at the
-  # end reconciles the Blob (old image objects deleted, new ones uploaded).
+  # end reconciles the cdn (old image objects deleted, new ones uploaded).
   if [ "$MODE" = "replace" ]; then
     echo "  Replacing '$SLUG': existing $(count_images "$ASSETS/$TYPE/$SLUG") image(s) → Trash, new set swapped in..."
     to_trash "$ASSETS/$TYPE/$SLUG"
@@ -585,7 +585,7 @@ publish_unit() {
   fi
 
   # Commit the unit into data.js (the source of truth the front reads). This stays
-  # local — the Blob is updated once, by the mirror at the end.
+  # local — the cdn is updated once, by the mirror at the end.
   echo "  Updating data.js..."
   if [ "$MODE" = "append" ]; then
     python3 "$DATA_EDIT" set-count "$DATA" "$SLUG" "$FINAL"
@@ -601,7 +601,7 @@ publish_unit() {
   fi
 
   # Finalize this unit locally so it's self-contained on disk (assets + data.js)
-  # regardless of whether the script continues; the Blob is reconciled by the mirror:
+  # regardless of whether the script continues; the cdn is reconciled by the mirror:
   #   - send its staging source to the Trash (recoverable, not a hard delete) so
   #     an interrupted re-run never re-appends it;
   #   - refresh dims.js from disk (full rescan) so this album's ratios are in place.
@@ -639,37 +639,33 @@ echo "════════════════════════�
 echo "Local changes complete."
 echo ""
 
-# ── Mirror to Vercel Blob — the ONLY step that touches the Blob ──────────────────
-# A full local↔Blob diff: upload missing/changed (by path + size), delete extras.
-# Reported first, applied only on your confirmation — say no to keep batching
-# locally, yes when you're about to deploy. Needs BLOB_READ_WRITE_TOKEN (.env).
-if ! node --env-file-if-exists="$SCRIPT_DIR/.env" -e 'process.exit(process.env.BLOB_READ_WRITE_TOKEN ? 0 : 1)' 2>/dev/null; then
-  echo "Blob mirror skipped: BLOB_READ_WRITE_TOKEN not set (.env)."
-  echo "Local changes are saved; set the token and re-run to mirror before deploying."
+# ── Mirror to cdn.trognon.space — the ONLY step that touches the online media ──
+# A full local↔cdn diff of assets/{album,series}/: upload missing/changed, delete
+# extras. Reported first, applied only on your confirmation — say no to keep batching
+# locally, yes when you're about to deploy. Needs rclone and the Cloudflare token in
+# the macOS keychain (see tools/media-sync.sh).
+echo "=== Mirror cdn ↔ assets/ ==="
+echo ""
+set +e
+"$SCRIPT_DIR/tools/media-sync.sh"
+MIRROR_STATUS=$?
+set -e
+if [ "$MIRROR_STATUS" -eq 0 ]; then
+  read -p "Mirror these changes to cdn.trognon.space now? (y/n): " MIRROR_CONFIRM
   echo ""
-else
-  echo "=== Mirror Blob ↔ assets/ ==="
-  echo ""
-  set +e
-  node --env-file-if-exists="$SCRIPT_DIR/.env" "$SCRIPT_DIR/tools/blob-sync.mjs" mirror
-  MIRROR_STATUS=$?
-  set -e
-  if [ "$MIRROR_STATUS" -eq 0 ]; then
-    read -p "Mirror these changes to Vercel Blob now? (y/n): " MIRROR_CONFIRM
-    echo ""
-    if [ "$MIRROR_CONFIRM" = "y" ]; then
-      node --env-file-if-exists="$SCRIPT_DIR/.env" "$SCRIPT_DIR/tools/blob-sync.mjs" mirror --apply
-    else
-      echo "Mirror skipped — Blob not updated this run."
-    fi
-    echo ""
-  elif [ "$MIRROR_STATUS" -ne 10 ]; then
-    exit "$MIRROR_STATUS"
+  if [ "$MIRROR_CONFIRM" = "y" ]; then
+    "$SCRIPT_DIR/tools/media-sync.sh" --apply
+  else
+    echo "Mirror skipped — cdn not updated this run."
   fi
+  echo ""
+elif [ "$MIRROR_STATUS" -ne 10 ]; then
+  echo "cdn mirror unavailable (see above). Local changes are saved; fix it and re-run before deploying."
+  echo ""
 fi
 
 echo "══════════════════════════════════════════"
 echo "Reminder: commit & push site/js/data.js and site/js/dims.js to deploy."
-echo "The deployed site serves media from Vercel Blob — make sure you mirrored"
+echo "The deployed site serves media from cdn.trognon.space — make sure you mirrored"
 echo "(above) before deploying, or new/changed media will 404."
 echo ""

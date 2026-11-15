@@ -1,0 +1,12 @@
+// Cloudflare Worker serving vfe.trognon.space: the static site in site/, no code.
+// Album media is not deployed with the site: it lives on cdn.trognon.space
+// (tools/media-sync.sh). Deployed by Workers Builds on every push to main.
+{
+  "name": "vfe",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./site"
+  },
+  // Cloudflare creates the DNS record and certificate for this hostname.
+  "routes": [{ "pattern": "vfe.trognon.space", "custom_domain": true }]
+}
