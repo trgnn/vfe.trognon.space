@@ -20,6 +20,11 @@ ACCOUNT=821b62927872e6831a76b86ca69c6886
 DEST="r2:cdn/vfe/assets"
 
 command -v rclone >/dev/null || { echo "rclone is missing: brew install rclone" >&2; exit 1; }
+# A checkout without its images would delete them online: refuse.
+if [ -z "$(find "$ASSETS/album" "$ASSETS/series" -type f -name '*.avif' 2>/dev/null | head -1)" ]; then
+  echo "No local images under site/assets/: nothing to mirror (this would delete them online)." >&2
+  exit 1
+fi
 TOKEN="$(security find-generic-password -s cloudflare-deploy-trognon -w 2>/dev/null)" \
   || { echo "Cloudflare token not found in the keychain (cloudflare-deploy-trognon)." >&2; exit 1; }
 TOKEN_ID="$(curl -s -H "Authorization: Bearer $TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify \
