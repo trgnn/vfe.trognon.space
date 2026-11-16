@@ -14,7 +14,7 @@ function buildNav(VFE) {
     return albums;
   }
 
-  const sumCount = list => list.reduce((s, a) => s + (a.count || 0), 0);
+  const sumCount = list => list.reduce((s, a) => s + vfeCount(a), 0);
 
   // Album display title: "Game Name · Subtitle" (subtitle optional). Disambiguates
   // albums that share a game name (former sets, now distinct albums).
@@ -69,11 +69,11 @@ function buildNav(VFE) {
   const pinnedLinks = (starred.pinned || []).map(p => {
     if (p.type === 'album') {
       const a = albums.find(x => x.slug === p.slug);
-      return a ? link(`/index.html?album=${a.slug}`, albumTitle(a), a.count) : '';
+      return a ? link(`/index.html?album=${a.slug}`, albumTitle(a), vfeCount(a)) : '';
     }
     if (p.type === 'series') {
       const s = series.find(x => x.slug === p.slug);
-      return s ? link(`/index.html?series=${s.slug}`, s.name, s.count) : '';
+      return s ? link(`/index.html?series=${s.slug}`, s.name, vfeCount(s)) : '';
     }
     if (p.type === 'collection') {
       const c = collections.find(x => x.slug === p.slug);
@@ -105,7 +105,7 @@ function buildNav(VFE) {
         const links = letterAlbums
           .map(a => `
           <a href="/index.html?album=${a.slug}" id="${a.slug}">
-            <span class="name">${albumTitle(a)}</span><span class="meta">(${a.count})</span>
+            <span class="name">${albumTitle(a)}</span><span class="meta">(${vfeCount(a)})</span>
           </a>`).join('');
         return `<span class="alphabet">${letter}</span>${links}`;
       }).join('');
@@ -123,7 +123,7 @@ function buildNav(VFE) {
     <div>
       <h3>Series</h3>
       <div class="filters">
-        ${renderByEra(series, s => link(`/index.html?series=${s.slug}`, s.name, s.count))}
+        ${renderByEra(series, s => link(`/index.html?series=${s.slug}`, s.name, vfeCount(s)))}
       </div>
     </div>` : '';
 
@@ -143,6 +143,10 @@ function buildNav(VFE) {
   // so the footer still renders if config.js is ever absent.
   const version = typeof VFE_VERSION !== 'undefined'
     ? `<span class="version">${VFE_VERSION}</span>` : '';
+
+  // Only when the back-office serves the site (npm run admin): a way back to it.
+  const admin = typeof VFE_ADMIN !== 'undefined' && VFE_ADMIN
+    ? `<div><a href="/admin/">Back-office</a></div>` : '';
 
   return `
     <header>
@@ -191,6 +195,7 @@ function buildNav(VFE) {
         <div>
           <a href="/about.html"><span class="bold">About</span> <span class="nop">View From Elsewhere</span></a>
         </div>
+        ${admin}
         <div class="SM">
           <a href="https://go.trognon.space/socials/instagram" target="_blank" aria-label="Instagram">
             <img src="/assets/instagram.svg" alt="" width="20" height="20" />
@@ -201,4 +206,30 @@ function buildNav(VFE) {
     </footer>`;
 }
 
-document.querySelector('#nav').innerHTML = buildNav(VFE);
+// The Explore overlay: opened by its trigger or E, closed by Escape.
+function initExploreModal() {
+  const body = document.body;
+  const modal = document.querySelector('.modal-filter');
+  const triggers = document.querySelectorAll('.modal-filter-trigger');
+  function toggle() {
+    modal.classList.toggle('active');
+    this.classList.toggle('active');
+    body.classList.toggle('active');
+  }
+  triggers.forEach(t => t.addEventListener('click', toggle));
+  document.addEventListener('keydown', e => {
+    if (e.target.matches('input, textarea')) return;
+    if (e.key === 'Escape' && modal.classList.contains('active')) {
+      modal.classList.remove('active');
+      body.classList.remove('active');
+      triggers.forEach(t => t.classList.remove('active'));
+    } else if (e.key === 'e' || e.key === 'E') {
+      triggers[0].click();
+    }
+  });
+}
+
+VFE_READY.then(data => {
+  document.querySelector('#nav').innerHTML = buildNav(data);
+  initExploreModal();
+});

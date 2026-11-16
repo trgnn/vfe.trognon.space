@@ -6,26 +6,32 @@ Live at https://vfe.trognon.space
 
 ## How it works
 
-- `site/` is the whole site: static HTML, CSS and vanilla JS, no framework and no build step. One page (`index.html`) renders every view from query params (`?album=`, `?series=`, `?collection=`, `?mix=`).
+- `site/` is the whole site: static HTML, CSS and vanilla JS, no framework and no build step. One page (`index.html`) renders every view from query params (`?album=`, `?series=`, `?collection=`, `?mix=`), from the data in `site/data/vfe.json`.
 - Images are not in the repo. They are served from `cdn.trognon.space/vfe` (Cloudflare R2), switched by `VFE_MEDIA_BASE` in `site/js/config.js`.
 - Each image comes in three versions: a thumbnail for the grid (AVIF), a full-screen image (AVIF) and a download (JPEG).
 
-## Run locally
+## The back-office
 
 ```bash
-npx serve -l 4322 site
+npm install
+npm run admin    # http://localhost:4340/admin/ — and a preview of the site at /, with the local images
+                 # (its footer links back to the back-office; Preview in the admin goes to the site)
 ```
 
-With `VFE_MEDIA_BASE` set to the cdn, the local site shows the online images. Set it to `''` to use a local copy under `site/assets/{album,series}/`.
+- **Albums, Series**: create one, fill in its name, era and credits, then drop the masters (PNG, TIFF or JPEG) on its page. They're added in the natural order of their names (`shot (2)` before `shot (10)`), then drag them into place. The star marks a featured image.
+- **Collections**: groups of albums.
+- **Starred**: the Explore menu's mixes (the first one is the home page) and pinned items.
+- **Publish…**: shows what changed, then mirrors the images to the cdn, commits `site/` and pushes. The push deploys the site.
 
-## Publish images
+The same actions from the command line:
 
-1. Export lossless masters (PNG or TIFF) with zero-padded names (`001.png`, `002.png`…): publish order follows the file names.
-2. Drop them into `album-staging/`, one folder per album or series.
-3. Run `./sync-and-push.sh` and answer the prompts. It reconciles `site/js/data.js` with the local media, generates the three versions, updates `data.js` and `dims.js`, then offers to mirror the local media to the cdn.
-4. Commit and push the changed JS files.
+```bash
+npm run -s vfe -- list
+npm run -s vfe -- import album metroExodus ~/Exports/metro    # create if needed, add a folder of masters
+npm run -s vfe -- publish            # what would be published; --apply to publish
+```
 
-Needs Python 3 with Pillow built with AVIF support, Node, and [rclone](https://rclone.org/) for the cdn mirror.
+Needs Node 22 or later. Publishing needs [rclone](https://rclone.org/) and the Cloudflare token in the macOS keychain (see `tools/media-sync.sh`).
 
 ## Deploy
 

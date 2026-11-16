@@ -1,36 +1,31 @@
 // ─── Image builders ───────────────────────────────────────────────────────────
 
 // Build a single <img>. `type` is the media folder ('album' | 'series'); `slug`
-// is the folder that holds the media; `albumSlug` is the source album the
-// "Album" lightbox button jumps to ('' to hide it for that image, e.g. series).
-function imgTag(type, slug, i, albumSlug, name, lcp) {
+// is the folder that holds the media; `image` is its entry in data/vfe.json
+// ({ file, ratio, featured }); `i` its 1-based position, for the alt text;
+// `albumSlug` is the source album the "Album" lightbox button jumps to ('' to
+// hide it for that image, e.g. series).
+function imgTag(type, slug, image, i, albumSlug, name, lcp) {
   const base = `${VFE_MEDIA_BASE}/assets/${type}/${slug}`;
-  const stem = `${slug}_${String(i).padStart(2, '0')}`;
+  const stem = image.file;
   const loading  = lcp ? '' : 'loading="lazy"';
   const priority = lcp ? 'fetchpriority="high"' : '';
-  // Precomputed aspect ratio (dims.js): lets the grid be laid out before the
-  // pixels load, so the appearance animation never reflows. Empty if unknown.
-  const r = (typeof VFE_DIMS !== 'undefined' && VFE_DIMS[type] && VFE_DIMS[type][slug] && VFE_DIMS[type][slug][i - 1]);
-  const ratio = r ? `data-ratio="${r}"` : '';
-  // Featured ("spotlight") tag — per-album image indices stored in data.js
-  // (album.featured). Only album-sourced images have that stable identity;
-  // mixes/collections call this with type 'album' too, so the tag follows.
-  const album = (type === 'album' && typeof VFE !== 'undefined' && VFE.albums)
-    ? VFE.albums.find(a => a.slug === slug) : null;
-  const featured = !!(album && Array.isArray(album.featured) && album.featured.includes(i));
+  // Precomputed aspect ratio: lets the grid be laid out before the pixels
+  // load, so the appearance animation never reflows. Empty if unknown.
+  const ratio = image.ratio ? `data-ratio="${image.ratio}"` : '';
+  // Featured ("spotlight") tag: follows the image into every view.
+  const featured = !!image.featured;
   const feat = featured ? 'data-featured="1"' : '';
   const cls = `m-p-g__thumbs-img${featured ? ' is-featured' : ''}`;
   return `<img src="${base}/thumbs/${stem}.avif" data-full="${base}/full/${stem}.avif" data-download="${base}/downloads/${stem}.jpg" data-album-slug="${albumSlug}" ${ratio} ${feat} alt="${name} — photo ${i}" class="${cls}" ${loading} ${priority}>`;
 }
 
-// All images of a single album or series (1 → count).
+// All images of a single album or series, in their order.
 function buildItemImages(item, type, startLcp) {
   const albumSlug = type === 'album' ? item.slug : '';
-  const imgs = [];
-  for (let i = 1; i <= item.count; i++) {
-    imgs.push(imgTag(type, item.slug, i, albumSlug, item.name, startLcp && i === 1));
-  }
-  return imgs.join('\n');
+  return (item.images || [])
+    .map((image, k) => imgTag(type, item.slug, image, k + 1, albumSlug, item.name, startLcp && k === 0))
+    .join('\n');
 }
 
 // Resolve a mix `source` to a list of album objects.
@@ -47,7 +42,7 @@ function resolveSource(source) {
 function buildMix(mix) {
   const pool = [];
   resolveSource(mix.source).forEach(album => {
-    for (let i = 1; i <= album.count; i++) pool.push({ album, i });
+    (album.images || []).forEach((image, k) => pool.push({ album, image, i: k + 1 }));
   });
 
   if (mix.random) {
@@ -59,7 +54,7 @@ function buildMix(mix) {
 
   const sliced = mix.count ? pool.slice(0, mix.count) : pool;
   return sliced
-    .map(({ album, i }, idx) => imgTag('album', album.slug, i, album.slug, album.name, idx === 0))
+    .map(({ album, image, i }, idx) => imgTag('album', album.slug, image, i, album.slug, album.name, idx === 0))
     .join('\n');
 }
 
@@ -71,10 +66,10 @@ function buildCollectionImages(collection) {
   const imgs = [];
   let idx = 0;
   albums.forEach(album => {
-    for (let i = 1; i <= album.count; i++) {
-      imgs.push(imgTag('album', album.slug, i, album.slug, album.name, idx === 0));
+    (album.images || []).forEach((image, k) => {
+      imgs.push(imgTag('album', album.slug, image, k + 1, album.slug, album.name, idx === 0));
       idx++;
-    }
+    });
   });
   return imgs.join('\n');
 }
@@ -121,7 +116,7 @@ function buildItemInfo(item, type) {
 
 // ─── Justified layout ────────────────────────────────────────────────────────
 
-// Aspect ratio of a thumbnail: the precomputed value (dims.js) when available so
+// Aspect ratio of a thumbnail: the precomputed value (data/vfe.json) when available so
 // the grid can be built before pixels load, otherwise the natural size once
 // loaded. null when neither is known yet (skip it for now).
 function ratioOf(img) {
@@ -144,7 +139,7 @@ function justifyGrid(container) {
   const containerWidth = container.clientWidth;
   if (!containerWidth) return; // not laid out yet — a ResizeObserver re-runs us later
   // Lay out every image whose ratio is known (precomputed or loaded), skipping
-  // only the failed ones (hidden). With dims.js this includes images not loaded
+  // only the failed ones (hidden). With those ratios this includes images not loaded
   // yet, so the whole grid is positioned up-front and never reflows.
   const imgs = Array.from(container.querySelectorAll('img'))
     .filter(img => ratioOf(img) !== null && !img.classList.contains('hide'));
@@ -399,7 +394,7 @@ function resolveView(params) {
   return { info: '', html: buildMix(mix), showSourceButton: true, isItemPage: false };
 }
 
-document.addEventListener('DOMContentLoaded', function () {
+function initGallery() {
   const section   = document.getElementById('core-gallery');
   const mpg       = document.querySelector('.m-p-g');
   const thumbsBox = mpg.querySelector('.m-p-g__thumbs');
@@ -416,7 +411,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   const thumbs = Array.from(thumbsBox.querySelectorAll('.m-p-g__thumbs-img'));
 
-  // The grid is laid out from precomputed ratios (dims.js), so it's positioned
+  // The grid is laid out from precomputed ratios (data/vfe.json), so it's positioned
   // before any pixel loads. The loading overlay is only lifted once the width is
   // stable AND something is paintable, so the user never sees the layout settle
   // (premature width → final width → scrollbar) — no reflow, no jump on appear.
@@ -474,4 +469,11 @@ document.addEventListener('DOMContentLoaded', function () {
   onWidth();                                    // initial layout
 
   setTimeout(reveal, 1500);                     // safety net: never stay hidden
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  VFE_READY.then(initGallery).catch(err => {
+    console.error(err);
+    document.getElementById('loading').classList.add('none');
+  });
 });

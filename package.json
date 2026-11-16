@@ -1,10 +1,17 @@
 {
   "name": "vfe",
-  "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "View From Elsewhere — build & deploy tooling",
+  "description": "View From Elsewhere: the gallery's back-office and publishing tools.",
   "scripts": {
-    "media:sync": "tools/media-sync.sh"
+    "admin": "node src/cli.js admin",
+    "vfe": "node src/cli.js",
+    "test": "node --test test/"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "sharp": "^0.34.5"
   }
 }

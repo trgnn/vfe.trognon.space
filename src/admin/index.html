@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Back-office · View From Elsewhere</title>
+<link rel="icon" type="image/png" href="/assets/icon.png">
+<link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+<header class="bar">
+  <span class="brand"><img src="/assets/logo_short.png" alt="VFE"></span>
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" data-tab="album">Albums</button>
+    <button role="tab" data-tab="series">Series</button>
+    <button role="tab" data-tab="collection">Collections</button>
+    <button role="tab" data-tab="starred">Starred</button>
+  </nav>
+  <span class="status" id="status" aria-live="polite"></span>
+  <a class="out" href="/" target="_blank">Preview<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></a>
+  <button class="btn primary" id="publish" type="button">Publish…</button>
+</header>
+<main id="main"></main>
+<div class="toast" id="toast" role="alert" hidden></div>
+<script src="/admin/admin.js" type="module"></script>
+</body>
+</html>
