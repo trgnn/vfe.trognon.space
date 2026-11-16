@@ -31,3 +31,6 @@ site/assets/series/
 # Editor / agent tooling: local, machine-specific config, not portable.
 .vscode/
 .claude/
+
+# Wrangler local state (wrangler dev / deploy)
+.wrangler/

@@ -380,8 +380,9 @@ def cmd_reconcile(mode, assets, data, orphans_path, removed_path):
         sys.exit(0)
 
     # apply: count updates only. Removals are NOT applied here — they are recorded
-    # as candidates (removed_path) so the caller can confirm each one (and its Blob
-    # deletion) individually. A vanished item is kept in data.js until confirmed.
+    # as candidates (removed_path) so the caller can confirm each one individually
+    # (its cdn copy is dropped by the final mirror). A vanished item is kept in
+    # data.js until confirmed.
     removed = []
     for kind, name, render in (('album', 'albums', render_album), ('series', 'series', render_series)):
         entries = get_entries(content, name)
