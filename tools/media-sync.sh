@@ -9,8 +9,8 @@
 #   tools/media-sync.sh --apply    APPLY it: upload missing/changed, delete extras
 #
 # Only vfe/assets/album/ and vfe/assets/series/ are ever touched in the bucket.
-# Needs rclone (brew install rclone) and the Cloudflare API token in the macOS
-# keychain (service `cloudflare-deploy-trognon`, Workers R2 Storage: Edit). R2
+# Needs rclone (brew install rclone) and `op`: the Cloudflare API token is read
+# from 1Password (Touch ID; Workers R2 Storage: Edit). R2
 # accepts it as S3 credentials: access key = the token's ID, secret = its SHA-256.
 set -euo pipefail
 
@@ -25,8 +25,8 @@ if [ -z "$(find "$ASSETS/album" "$ASSETS/series" -type f -name '*.avif' 2>/dev/n
   echo "No local images under site/assets/: nothing to mirror (this would delete them online)." >&2
   exit 1
 fi
-TOKEN="$(security find-generic-password -s cloudflare-deploy-trognon -w 2>/dev/null)" \
-  || { echo "Cloudflare token not found in the keychain (cloudflare-deploy-trognon)." >&2; exit 1; }
+TOKEN="$(op read "op://Personal/Cloudflare deploy-trognon/credential")" \
+  || { echo "Cloudflare token not read from 1Password." >&2; exit 1; }
 TOKEN_ID="$(curl -s -H "Authorization: Bearer $TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify \
   | python3 -c 'import sys, json; print(json.load(sys.stdin)["result"]["id"])')" \
   || { echo "Cloudflare token rejected (expired?)." >&2; exit 1; }
