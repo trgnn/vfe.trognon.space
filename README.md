@@ -31,7 +31,7 @@ npm run -s vfe -- import album metroExodus ~/Exports/metro    # create if needed
 npm run -s vfe -- publish            # what would be published; --apply to publish
 ```
 
-Needs Node 22 or later. Publishing needs [rclone](https://rclone.org/) and the 1Password CLI `op`, which reads the Cloudflare token (see `tools/media-sync.sh`).
+Needs Node 22 or later. Publishing needs the cdn repo at `~/Projects/trognon-space/cdn`, whose `sync.sh` mirrors the media (rclone, and the 1Password CLI `op` for the Cloudflare token).
 
 ## Deploy
 
