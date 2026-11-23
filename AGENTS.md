@@ -1,6 +1,6 @@
 # View From Elsewhere — agent guide
 
-The README covers what the project is and the commands. This file covers how it is built and what must not break. Project status, backlog and releases live in the vault note: `grep -rl "local_folder: ~/Projects/VFE" ~/Documents/vault/projects`.
+The README covers what the project is and the commands. This file covers how it is built and what must not break. Project status, backlog and releases live in `../project.md`.
 
 ## Layout
 
