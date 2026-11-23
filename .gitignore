@@ -7,9 +7,6 @@ node_modules/
 # Secrets — local environment
 .env
 
-# Resources / backups, out of scope (also contains nested git repos)
-/_ressources/
-
 # Local drop folder for masters before they're added in the back-office: the
 # folder, not its contents.
 album-staging/*
